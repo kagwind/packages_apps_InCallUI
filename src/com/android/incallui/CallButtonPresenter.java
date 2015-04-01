@@ -193,13 +193,16 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         }
 
         int newMode = AudioState.ROUTE_SPEAKER;
+        boolean newProxSpeakerMode = true;
 
         // if speakerphone is already on, change to wired/earpiece
         if (getAudioMode() == AudioState.ROUTE_SPEAKER) {
             newMode = AudioState.ROUTE_WIRED_OR_EARPIECE;
+            newProxSpeakerMode = false;
         }
 
         setAudioMode(newMode);
+        setAutoProxSpeaker(newProxSpeakerMode);
     }
 
     public void muteClicked(boolean checked) {
@@ -519,6 +522,10 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
             muteClicked(mPreviousMuteState);
         }
         mAutomaticallyMuted = false;
+    }
+
+    public void setAutoProxSpeaker(final boolean isAuto) {
+        InCallPresenter.getInstance().setAutoProxSpeaker(isAuto);
     }
 
     public interface CallButtonUi extends Ui {

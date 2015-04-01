@@ -58,6 +58,7 @@ public class ProximitySensor implements AccelerometerListener.OrientationListene
     private boolean mIsPhoneOffhook = false;
     private boolean mProximitySpeaker = false;
     private boolean mIsProxSensorFar = true;
+    private boolean mIsManual = false;
     private int mProxSpeakerDelay = 100;
     private boolean mDialpadVisible;
 
@@ -81,7 +82,9 @@ public class ProximitySensor implements AccelerometerListener.OrientationListene
 
                 // if proximity sensor determines audio mode should be speaker,
                 // but it currently isn't
-                if (mIsProxSensorFar && audioMode != AudioMode.SPEAKER) {
+                if (mIsProxSensorFar && audioMode != AudioMode.SPEAKER 
+                        // and we did not change the AudioMode mannually
+                        && !mIsManual) {
                     // if prox incall only is off, we set to speaker as long as phone
                     // is off hook, ignoring whether or not the call state is outgoing
                     if (!proxSpeakerIncallOnlyPref
@@ -344,5 +347,9 @@ public class ProximitySensor implements AccelerometerListener.OrientationListene
                 mHandler.postDelayed(mActivateSpeaker, mProxSpeakerDelay);
             }
         }
+    }
+
+    public void setManualState(final boolean isManualState) {
+        mIsManual = isManualState;
     }
 }

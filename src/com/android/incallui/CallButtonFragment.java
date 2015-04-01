@@ -529,10 +529,12 @@ public class CallButtonFragment
         Log.d(this, "  title: '" + item.getTitle() + "'");
 
         int mode = AudioState.ROUTE_WIRED_OR_EARPIECE;
+        boolean proxSpeakerMode = false;
 
         switch (item.getItemId()) {
             case R.id.audio_mode_speaker:
                 mode = AudioState.ROUTE_SPEAKER;
+                proxSpeakerMode = true;
                 break;
             case R.id.audio_mode_earpiece:
             case R.id.audio_mode_wired_headset:
@@ -550,6 +552,7 @@ public class CallButtonFragment
         }
 
         getPresenter().setAudioMode(mode);
+        getPresenter().setAutoProxSpeaker(proxSpeakerMode);
 
         return true;
     }
