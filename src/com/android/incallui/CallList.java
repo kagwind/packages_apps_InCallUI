@@ -24,8 +24,10 @@ import android.os.Handler;
 import android.os.Message;
 import android.telecom.DisconnectCause;
 import android.telecom.Phone;
+import android.text.TextUtils;
 
 import java.util.Collections;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -562,5 +564,14 @@ public class CallList implements InCallPhoneListener {
     public interface CallUpdateListener {
         // TODO: refactor and limit arg to be call state.  Caller info is not needed.
         public void onCallChanged(Call call);
+    }
+
+    public Call getCallWithStateAndNumber(int state, String number) {
+        for (Call call : mCallById.values()) {
+            if (TextUtils.equals(call.getNumber(), number) && call.getState() == state) {
+                return call;
+            }
+        }
+        return null;
     }
 }

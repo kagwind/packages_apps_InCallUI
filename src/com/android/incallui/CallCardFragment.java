@@ -22,18 +22,31 @@ import android.animation.AnimatorSet;
 import android.animation.LayoutTransition;
 import android.animation.ObjectAnimator;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ContentResolver;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.provider.Settings;
 import android.telecom.DisconnectCause;
 import android.telecom.VideoProfile;
 import android.telephony.PhoneNumberUtils;
+import android.text.format.DateUtils;
 import android.text.TextUtils;
+import android.view.ContextThemeWrapper;
 import android.view.Display;
+import android.text.format.DateUtils;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.View.OnLayoutChangeListener;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
@@ -45,6 +58,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import com.android.contacts.common.widget.FloatingActionButtonController;
@@ -78,12 +92,16 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
     private View mCallNumberAndLabel;
     private ImageView mPhoto;
     private TextView mElapsedTime;
+    private ImageButton mMoreMenuButton;
+    private MorePopupMenu mMoreMenu;
 
     // Container view that houses the entire primary call card, including the call buttons
     private View mPrimaryCallCardContainer;
     // Container view that houses the primary call information
     private ViewGroup mPrimaryCallInfo;
     private View mCallButtonsContainer;
+    private TextView mRecordingTimeLabel;
+    private TextView mRecordingIcon;
 
     // Secondary caller info
     private View mSecondaryCallInfo;
@@ -112,6 +130,44 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
 
     private int mVideoAnimationDuration;
 
+
+    private CallRecorder.RecordingProgressListener mRecordingProgressListener =
+            new CallRecorder.RecordingProgressListener() {
+        @Override
+        public void onStartRecording() {
+            mRecordingTimeLabel.setText(DateUtils.formatElapsedTime(0));
+            if (mRecordingTimeLabel.getVisibility() != View.VISIBLE) {
+                AnimUtils.fadeIn(mRecordingTimeLabel, AnimUtils.DEFAULT_DURATION);
+            }
+            if (mRecordingIcon.getVisibility() != View.VISIBLE) {
+                AnimUtils.fadeIn(mRecordingIcon, AnimUtils.DEFAULT_DURATION);
+            }
+        }
+
+        @Override
+        public void onStopRecording() {
+            AnimUtils.fadeOut(mRecordingTimeLabel, AnimUtils.DEFAULT_DURATION);
+            AnimUtils.fadeOut(mRecordingIcon, AnimUtils.DEFAULT_DURATION);
+        }
+
+        @Override
+        public void onRecordingTimeProgress(final long elapsedTimeMs) {
+            long elapsedSeconds = (elapsedTimeMs + 500) / 1000;
+            mRecordingTimeLabel.setText(DateUtils.formatElapsedTime(elapsedSeconds));
+
+            // make sure this is visible in case we re-loaded the UI for a call in progress
+            mRecordingTimeLabel.setVisibility(View.VISIBLE);
+            mRecordingIcon.setVisibility(View.VISIBLE);
+        }
+    };
+
+    private static final String RECORD_STATE_CHANGED =
+            "com.qualcomm.qti.phonefeature.RECORD_STATE_CHANGED";
+
+    private static final int MESSAGE_TIMER = 1;
+
+    private InCallActivity mInCallActivity;
+
     @Override
     CallCardPresenter.CallCardUi getUi() {
         return this;
@@ -135,6 +191,10 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
                 R.dimen.end_call_floating_action_button_diameter);
         mFabSmallDiameter = getResources().getDimensionPixelOffset(
                 R.dimen.end_call_floating_action_button_small_diameter);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(RECORD_STATE_CHANGED);
+
+        mInCallActivity = (InCallActivity)getActivity();
     }
 
 
@@ -184,6 +244,26 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
         mInCallMessageLabel = (TextView) view.findViewById(R.id.connectionServiceMessage);
         mProgressSpinner = view.findViewById(R.id.progressSpinner);
 
+        mMoreMenuButton = (ImageButton) view.findViewById(R.id.moreMenuButton);
+        final ContextThemeWrapper contextWrapper = new ContextThemeWrapper(getActivity(),
+                R.style.InCallPopupMenuStyle);
+        mMoreMenu = new MorePopupMenu(contextWrapper, mMoreMenuButton /* anchorView */);
+        mMoreMenu.getMenuInflater().inflate(R.menu.incall_more_menu, mMoreMenu.getMenu());
+        mMoreMenuButton.setOnTouchListener(mMoreMenu.getDragToOpenListener());
+        mMoreMenuButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Call call = CallList.getInstance().getActiveOrBackgroundCall();
+                if (call != null) {
+                    updateMoreMenuByCall(call.getState());
+                }
+                mMoreMenu.show();
+            }
+        });
+
+        CallRecorder recorder = CallRecorder.getInstance();
+        recorder.addRecordingProgressListener(mRecordingProgressListener);
+
         mFloatingActionButtonContainer = view.findViewById(
                 R.id.floating_end_call_action_button_container);
         mFloatingActionButton = (ImageButton) view.findViewById(
@@ -224,6 +304,9 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
 
         mPrimaryName.setElegantTextHeight(false);
         mCallStateLabel.setElegantTextHeight(false);
+
+        mRecordingTimeLabel = (TextView) view.findViewById(R.id.recordingTime);
+        mRecordingIcon = (TextView) view.findViewById(R.id.recordingIcon);
     }
 
     @Override
@@ -493,6 +576,7 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
         boolean isGatewayCall = !TextUtils.isEmpty(gatewayNumber);
         CharSequence callStateLabel = getCallStateLabelFromState(state, videoState,
                 sessionModificationState, disconnectCause, connectionLabel, isGatewayCall);
+        updateMoreMenuByCall(state);
 
         Log.v(this, "setCallState " + callStateLabel);
         Log.v(this, "DisconnectCause " + disconnectCause.toString());
@@ -1010,6 +1094,73 @@ public class CallCardFragment extends BaseFragment<CallCardPresenter, CallCardPr
             v.setRight(oldRight);
             v.setTop(oldTop);
             v.setBottom(oldBottom);
+        }
+    }
+
+    private void updateMoreMenuByCall(int state) {
+        if (mMoreMenuButton == null) {
+            return;
+        }
+
+        final Menu menu = mMoreMenu.getMenu();
+        final MenuItem startRecord = menu.findItem(R.id.menu_start_record);
+        final MenuItem stopRecord = menu.findItem(R.id.menu_stop_record);
+
+        CallRecorder callRecorder = CallRecorder.getInstance();
+        boolean startEnabled = false;
+        boolean stopEnabled = false;
+        if (callRecorder.isEnabled()) {
+            boolean isRecording = callRecorder.isRecording();
+            startEnabled = !isRecording && state == Call.State.ACTIVE;
+            stopEnabled = isRecording && state == Call.State.ACTIVE;
+        }
+
+        startRecord.setVisible(startEnabled);
+        startRecord.setEnabled(startEnabled);
+
+        stopRecord.setVisible(stopEnabled);
+        stopRecord.setEnabled(stopEnabled);
+
+        if (mMoreMenu.getMenu().hasVisibleItems()) {
+            mMoreMenuButton.setVisibility(View.VISIBLE);
+        } else {
+            mMoreMenuButton.setVisibility(View.GONE);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        CallRecorder recorder = CallRecorder.getInstance();
+        recorder.removeRecordingProgressListener(mRecordingProgressListener);
+    }
+
+    private class MorePopupMenu extends PopupMenu implements PopupMenu.OnMenuItemClickListener {
+        public MorePopupMenu(Context context, View anchor) {
+            super(context, anchor);
+            setOnMenuItemClickListener(this);
+        }
+
+        @Override
+        public boolean onMenuItemClick(MenuItem item) {
+            switch(item.getItemId()) {
+                case R.id.menu_start_record:
+                    Call call = CallList.getInstance().getActiveCall();
+                    // can't start recording with no active call
+                    if (call != null) {
+                        CallRecorder.getInstance().startRecording(
+                                call.getNumber(), call.getCreateTimeMillis());
+                    }
+                    return true;
+
+                case R.id.menu_stop_record:
+                    CallRecorder callRecorder = CallRecorder.getInstance();
+                    if (callRecorder.isRecording()) {
+                        callRecorder.finishRecording();
+                    }
+                    return true;
+            }
+            return true;
         }
     }
 }

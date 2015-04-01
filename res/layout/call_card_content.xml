@@ -58,6 +58,23 @@
 
     </LinearLayout>
 
+    <!--  More menu overflow button for call recording, blacklisting
+          only visible during the call. It sits above the primary call info
+          container in the top-right hand corner. -->
+    <ImageButton
+            android:id="@+id/moreMenuButton"
+            style="@style/InCallButton"
+            android:paddingTop="16dp"
+            android:paddingRight="16dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/overflow_thumbnail"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:elevation="@dimen/primary_call_overflow_elevation"
+            android:rotation="90"
+            android:contentDescription="@string/onscreenMoreMenuText"/>
+
     <!-- Contact photo for primary call info -->
     <!-- exposed bg for theming -->
     <ImageView android:id="@+id/photo"
@@ -70,6 +87,35 @@
         android:contentDescription="@string/contactPhoto"
         android:background="@color/exposed_bg_dark"
         android:src="@drawable/img_no_image_automirrored" />
+
+    <!-- Call recorder info -->
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentBottom="true">
+
+        <TextView android:id="@+id/recordingIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_marginLeft="24dp"
+            android:paddingBottom="119dp"
+            android:drawableRight="@drawable/ic_recording_indicator"
+            android:visibility="invisible" />
+
+        <TextView android:id="@+id/recordingTime"
+            android:text="@string/recording_time_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/recordingIcon"
+            android:layout_marginLeft="5dp"
+            android:paddingBottom="120dp"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:textColor="@color/incall_call_banner_text_color"
+            android:visibility="invisible"
+            android:singleLine="true"/>
+    </RelativeLayout>
 
     <fragment android:name="com.android.incallui.VideoCallFragment"
         android:id="@+id/videoCallFragment"

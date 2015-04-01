@@ -18,7 +18,9 @@ package com.android.incallui;
 
 import android.content.Context;
 import android.graphics.drawable.LayerDrawable;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Message;
 import android.telecom.AudioState;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -58,6 +60,7 @@ public class CallButtonFragment
     private PopupMenu mAudioModePopup;
     private boolean mAudioModePopupVisible;
     private PopupMenu mOverflowPopup;
+    private PopupMenu mMoreMenu;
 
     private int mPrevAudioMode = 0;
 
@@ -350,7 +353,7 @@ public class CallButtonFragment
             });
         }
 
-        final Menu menu = mOverflowPopup.getMenu();
+        Menu menu = mOverflowPopup.getMenu();
         menu.findItem(R.id.overflow_merge_menu_item).setVisible(showMergeMenuOption);
         menu.findItem(R.id.overflow_add_menu_item).setVisible(showAddMenuOption);
         menu.findItem(R.id.overflow_hold_menu_item).setVisible(
@@ -358,6 +361,11 @@ public class CallButtonFragment
         menu.findItem(R.id.overflow_resume_menu_item).setVisible(
                 showHoldMenuOption && mHoldButton.isSelected());
         menu.findItem(R.id.overflow_swap_menu_item).setVisible(showSwapMenuOption);
+
+        if (mMoreMenu != null) {
+            menu = mMoreMenu.getMenu();
+            menu.findItem(R.id.menu_start_record).setVisible(true);
+        }
 
         mOverflowButton.setEnabled(menu.hasVisibleItems());
     }
@@ -421,6 +429,7 @@ public class CallButtonFragment
             case R.id.audio_mode_bluetooth:
                 mode = AudioState.ROUTE_BLUETOOTH;
                 break;
+
             default:
                 Log.e(this, "onMenuItemClick:  unexpected View ID " + item.getItemId()
                         + " (MenuItem = '" + item + "')");
@@ -666,4 +675,6 @@ public class CallButtonFragment
             manager.sendAccessibilityEvent(e);
         }
     }
+
+
 }

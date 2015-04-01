@@ -61,6 +61,8 @@ public class InCallActivity extends Activity {
     public static final String DIALPAD_TEXT_EXTRA = "InCallActivity.dialpad_text";
     public static final String NEW_OUTGOING_CALL = "InCallActivity.new_outgoing_call";
 
+    private static final String EXTRA_RESULT = "result";
+
     private CallButtonFragment mCallButtonFragment;
     private CallCardFragment mCallCardFragment;
     private AnswerFragment mAnswerFragment;
