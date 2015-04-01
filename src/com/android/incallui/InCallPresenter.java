@@ -1135,6 +1135,12 @@ public class InCallPresenter implements CallList.Listener, InCallPhoneListener {
         }
     }
 
+    public void setAutoProxSpeaker(final boolean isAuto) {
+        if (mProximitySensor != null) {
+            mProximitySensor.setManualState(!isAuto);
+        }
+    }
+
     /**
      * Interface implemented by classes that need to know about the InCall State.
      */
